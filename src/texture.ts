@@ -30,6 +30,20 @@ export function isVariant(name: string): name is VariantName {
   return Object.prototype.hasOwnProperty.call(VARIANTS, name);
 }
 
+/** A variant as served: "<name>" (raw RGB565, dithered) or "<name>.jpg" (the same texels before the dither, as a JPEG). */
+export function isServedVariant(name: string): boolean {
+  return isVariant(name.endsWith(".jpg") ? name.slice(0, -4) : name);
+}
+
+/** The JPEG form: quality 92, no chroma subsampling (jpeg-js encodes 4:4:4), about a fifth of the raw size. The display
+ * decodes it and applies the same dither itself. */
+export const JPEG_QUALITY = 92;
+export function encodeJpeg(im: RgbImage): Buffer {
+  const n = im.width * im.height, rgba = Buffer.alloc(n * 4);
+  for (let k = 0, s = 0, d = 0; k < n; k++, s += 3, d += 4) { rgba[d] = im.data[s]; rgba[d + 1] = im.data[s + 1]; rgba[d + 2] = im.data[s + 2]; rgba[d + 3] = 255; }
+  return Buffer.from(jpeg.encode({ data: rgba, width: im.width, height: im.height }, JPEG_QUALITY).data);
+}
+
 export const BAYER = [
   [0, 8, 2, 10],
   [12, 4, 14, 6],
@@ -183,11 +197,11 @@ export function decodeJpeg(data: Uint8Array): RgbImage {
   return { width: im.width, height: im.height, data: rgb };
 }
 
-export type Variants = Record<VariantName, Buffer>;
+export type Variants = Record<string, Buffer>; // "home", "home.jpg", ...
 
 export function makeVariants(jpegData: Uint8Array): Variants {
   const cover = new Cover(decodeJpeg(jpegData));
   const out = {} as Variants;
-  for (const name of VARIANT_NAMES) out[name] = cover.variant(name);
+  for (const name of VARIANT_NAMES) { out[name] = cover.variant(name); out[`${name}.jpg`] = encodeJpeg(cover.rgb(name)); }
   return out;
 }

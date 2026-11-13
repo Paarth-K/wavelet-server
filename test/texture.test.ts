@@ -10,7 +10,7 @@ const cover = new Cover(img);
 describe("textures", () => {
   it("has the protocol's sizes in bytes", () => {
     const v = makeVariants(encodeJpeg(img));
-    const sizes = Object.fromEntries(Object.entries(v).map(([k, b]) => [k, b.length]));
+    const sizes = Object.fromEntries(Object.entries(v).filter(([k]) => !k.endsWith(".jpg")).map(([k, b]) => [k, b.length]));   /* the raw forms; .jpg ones: jpeg.test.ts */
     assert.deepEqual(sizes, { home: 41344, flight: 25088, sq160: 51200, sq36: 2592 });
     for (const n of VARIANT_NAMES) {
       const [w, h] = SPECS[n];

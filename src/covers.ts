@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { App } from "./app.js";
-import { KEY_RE, isVariant, makeVariants, type Variants } from "./texture.js";
+import { KEY_RE, isServedVariant, makeVariants, type Variants } from "./texture.js";
 import { errName, log, request, writePrivate } from "./util.js";
 
 export class Covers {
@@ -126,7 +126,7 @@ export class Covers {
 
   /** 200 with the texture; 404 unknown key or variant (or it can't be made); 503 still in the making after timeoutMs. */
   async get(key: string, variant: string, timeoutMs = 10_000): Promise<{ status: 200 | 404 | 503; body?: Buffer }> {
-    if (!isVariant(variant) || !KEY_RE.test(key)) return { status: 404 };
+    if (!isServedVariant(variant) || !KEY_RE.test(key)) return { status: 404 };
     const hit = this.touch(key);
     if (hit) return { status: 200, body: hit[variant] };
     if (!this.urls.has(key) && !fs.existsSync(this.file(key))) return { status: 404 };
