@@ -10,9 +10,11 @@ export interface Geo {
   drop_ms: number;
   exit_ms: number;
   back: number;
+  /** the S3's backlight, 1..16 (its driver's steps), set to match the main screen by eye */
+  s3_level: number;
 }
 
-export const DEFAULT_GEO: Geo = { s3_left_mm: -1.5, gap_mm: 14.0, drop_ms: 1000, exit_ms: 420, back: 1.2 };
+export const DEFAULT_GEO: Geo = { s3_left_mm: -1.5, gap_mm: 14.0, drop_ms: 1000, exit_ms: 420, back: 1.2, s3_level: 16 };
 
 /** name: [integer?, min, max] */
 export const GEO_LIMITS: Record<keyof Geo, [boolean, number, number]> = {
@@ -21,7 +23,11 @@ export const GEO_LIMITS: Record<keyof Geo, [boolean, number, number]> = {
   drop_ms: [true, 100, 10000],
   exit_ms: [true, 0, 5000],
   back: [false, 0, 5],
+  s3_level: [true, 1, 16],
 };
+
+/** the fields the Geometry form edits (the brightness has its own) */
+export const GEOMETRY_KEYS = ["s3_left_mm", "gap_mm", "drop_ms", "exit_ms", "back"] as const;
 
 export function cleanGeo(raw: unknown): Geo {
   const g = { ...DEFAULT_GEO };

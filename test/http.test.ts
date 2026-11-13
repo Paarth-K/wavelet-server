@@ -47,10 +47,11 @@ describe("HTTP", () => {
       ["POST", "/link"],
       ["POST", "/unlink"],
       ["POST", "/geo"],
+      ["POST", "/bright"],
       ["GET", "/nope"],
       ["GET", "/favicon.ico"],
     ]) {
-      const admin = ["/", "/link", "/unlink", "/geo"].includes(p);
+      const admin = ["/", "/link", "/unlink", "/geo", "/bright"].includes(p);
       for (const headers of [
         {},
         { "X-Wavelet-Key": wrong },
@@ -81,7 +82,7 @@ describe("HTTP", () => {
     assert.deepEqual(Object.keys(j), ["v", "server_ms", "linked", "playing", "track", "queue", "geo"]);
     assert.ok(Math.abs(j.server_ms - Date.now()) < 5000);
     assert.ok(r.body.toString().includes('"gap_mm":14.0'), "floats keep their decimal point");
-    assert.deepEqual(j.geo, { s3_left_mm: -1.5, gap_mm: 14, drop_ms: 1000, exit_ms: 420, back: 1.2 });
+    assert.deepEqual(j.geo, { s3_left_mm: -1.5, gap_mm: 14, drop_ms: 1000, exit_ms: 420, back: 1.2, s3_level: 16 });
     for (const user of ["wavelet", "anyone", ""]) {
       r = await hit(port, "GET", "/", { Authorization: basic(user, key) });
       assert.equal(r.status, 200);
@@ -112,8 +113,22 @@ describe("HTTP", () => {
     assert.equal(r.headers.location, "/");
     assert.equal(h.app.state.v, v + 1);
     const s = (await api("/api/state")).body.toString();
-    assert.ok(s.includes('"geo":{"s3_left_mm":-2.25,"gap_mm":13.0,"drop_ms":900,"exit_ms":400,"back":1.1}'), s);
+    assert.ok(s.includes('"geo":{"s3_left_mm":-2.25,"gap_mm":13.0,"drop_ms":900,"exit_ms":400,"back":1.1,"s3_level":16}'), s);
     assert.ok(fs.existsSync(path.join(h.dir, "geo.json")));
+    // brightness: its own form, keeps the geometry; whole numbers 1..16 only
+    for (const bad of ["0", "17", "8.5", ""]) {
+      await hit(port, "POST", "/bright", auth, form({ csrf: h.app.csrf, s3_level: bad }));
+      assert.equal(h.app.state.geo.s3_level, 16, `refused ${JSON.stringify(bad)}`);
+    }
+    r = await hit(port, "POST", "/bright", auth, form({ csrf: h.app.csrf, s3_level: "9" }));
+    assert.equal(r.status, 303);
+    assert.equal(h.app.state.v, v + 2);
+    const s2 = (await api("/api/state")).body.toString();
+    assert.ok(s2.includes('"geo":{"s3_left_mm":-2.25,"gap_mm":13.0,"drop_ms":900,"exit_ms":400,"back":1.1,"s3_level":9}'), s2);
+    r = await hit(port, "POST", "/geo", auth, form({ csrf: h.app.csrf, ...geo, gap_mm: "15" }));
+    assert.equal(h.app.state.geo.s3_level, 9, "saving the geometry keeps the brightness");
+    const page0 = (await hit(port, "GET", "/", auth)).body.toString();
+    assert.ok(page0.includes("<button name=s3_level value=9 class=on aria-pressed=true>9</button>"), "the page marks the level");
     assert.equal(h.app.auth.linked, true);
     await hit(port, "POST", "/unlink", auth, form({ csrf: h.app.csrf }));
     assert.equal(h.app.auth.linked, false);

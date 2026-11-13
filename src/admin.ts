@@ -1,7 +1,7 @@
 /* The admin page: status, Spotify linking (paste the failed redirect address), the geometry. Plain HTML, no scripts. */
 import type { App } from "./app.js";
 import { isLoopbackRedirect } from "./config.js";
-import { GEO_LIMITS, type Geo } from "./state.js";
+import { GEO_LIMITS, GEOMETRY_KEYS, type Geo } from "./state.js";
 
 export const VERSION = "1.0.0";
 
@@ -37,10 +37,13 @@ button,.button{font:inherit;padding:7px 14px;border-radius:6px;border:1px solid 
 button.quiet{background:#fff;color:#1d1d1f;border-color:#c9c9c5}
 .geo label{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:4px 0}
 .row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.levels{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:8px}
+.levels button{padding:9px 0;background:#fff;color:#1d1d1f;border-color:#c9c9c5}
+.levels button.on{background:#1d1d1f;color:#fff;border-color:#1d1d1f}
 p{margin:6px 0}
 `;
 
-const GEO_LABELS: Record<keyof Geo, string> = {
+const GEO_LABELS: Record<Exclude<keyof Geo, "s3_level">, string> = {
   s3_left_mm: "S3 left edge vs main left edge (mm)",
   gap_mm: "Gap, S3 bottom to main top (mm)",
   drop_ms: "Drop duration (ms)",
@@ -113,8 +116,19 @@ export function renderAdmin(app: App): string {
   }
   out.push("</section>");
 
+  const [, blo, bhi] = GEO_LIMITS.s3_level;
+  out.push(
+    `<h2>Brightness</h2><section><p>The main screen's backlight is fixed, so match the S3 to it: tap a level and compare the two ` +
+      `screens (the S3 fades to it within a couple of seconds). Now ${esc(st.geo.s3_level)} of ${bhi}.</p>`,
+    `<form method=post action="/bright" class=levels>${csrf}`,
+  );
+  for (let n = blo; n <= bhi; n++) {
+    out.push(`<button name=s3_level value=${n}${n === st.geo.s3_level ? " class=on aria-pressed=true" : ""}>${n}</button>`);
+  }
+  out.push("</form></section>");
+
   out.push(`<h2>Geometry</h2><section><form method=post action="/geo" class=geo>${csrf}`);
-  for (const k of Object.keys(GEO_LIMITS) as (keyof Geo)[]) {
+  for (const k of GEOMETRY_KEYS) {
     const [int, lo, hi] = GEO_LIMITS[k];
     out.push(
       `<label>${esc(GEO_LABELS[k])} <input type=number name=${k} value="${esc(st.geo[k])}" min="${lo}" max="${hi}" step="${int ? "1" : "0.01"}" required></label>`,

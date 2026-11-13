@@ -5,12 +5,12 @@ import { renderAdmin } from "./admin.js";
 import type { App } from "./app.js";
 import { callbackPath } from "./config.js";
 import { AuthError, sameText } from "./spotify.js";
-import { GEO_LIMITS, type Geo, type Snapshot } from "./state.js";
+import { GEO_LIMITS, GEOMETRY_KEYS, type Snapshot } from "./state.js";
 import { errName, log } from "./util.js";
 
 export const MAX_BODY = 8 * 1024;
 export const MAX_WAIT_S = 25;
-const ADMIN_POSTS = new Set(["/link", "/unlink", "/geo"]);
+const ADMIN_POSTS = new Set(["/link", "/unlink", "/geo", "/bright"]);
 const ADMIN_CSP = "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
 
 type Res = http.ServerResponse;
@@ -35,7 +35,7 @@ const text = (req: http.IncomingMessage, res: Res, status: number, body: string,
 export function stateJson(s: Snapshot): string {
   const f = (x: number) => (Number.isInteger(x) ? x.toFixed(1) : String(x));
   const g = s.geo;
-  const geo = `{"s3_left_mm":${f(g.s3_left_mm)},"gap_mm":${f(g.gap_mm)},"drop_ms":${Math.round(g.drop_ms)},"exit_ms":${Math.round(g.exit_ms)},"back":${f(g.back)}}`;
+  const geo = `{"s3_left_mm":${f(g.s3_left_mm)},"gap_mm":${f(g.gap_mm)},"drop_ms":${Math.round(g.drop_ms)},"exit_ms":${Math.round(g.exit_ms)},"back":${f(g.back)},"s3_level":${Math.round(g.s3_level)}}`;
   const rest = JSON.stringify({ v: s.v, server_ms: s.server_ms, linked: s.linked, playing: s.playing, track: s.track, queue: s.queue });
   return `${rest.slice(0, -1)},"geo":${geo}}`;
 }
@@ -180,8 +180,8 @@ async function adminPost(app: App, req: http.IncomingMessage, res: Res, path: st
     app.unlink();
     app.flash = { kind: "ok", text: "Spotify unlinked." };
   } else if (path === "/geo") {
-    const geo = {} as Geo;
-    for (const k of Object.keys(GEO_LIMITS) as (keyof Geo)[]) {
+    const geo = { ...app.state.geo };
+    for (const k of GEOMETRY_KEYS) {
       const [int, lo, hi] = GEO_LIMITS[k];
       const t = (form.get(k) ?? "").trim();
       const val = t === "" ? NaN : Number(t);
@@ -193,6 +193,16 @@ async function adminPost(app: App, req: http.IncomingMessage, res: Res, path: st
     }
     app.setGeo(geo);
     app.flash = { kind: "ok", text: `Geometry saved (state version ${app.state.v}).` };
+  } else if (path === "/bright") {
+    const [, lo, hi] = GEO_LIMITS.s3_level;
+    const t = (form.get("s3_level") ?? "").trim();
+    const val = t === "" ? NaN : Number(t);
+    if (!Number.isInteger(val) || val < lo || val > hi) {
+      app.flash = { kind: "err", text: `Brightness not saved: it must be a whole number within ${lo} .. ${hi}.` };
+      return back();
+    }
+    app.setGeo({ ...app.state.geo, s3_level: val });
+    app.flash = { kind: "ok", text: `S3 brightness ${val} of ${hi}. The S3 fades to it within a couple of seconds.` };
   }
   return back();
 }

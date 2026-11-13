@@ -23,7 +23,7 @@ Environment variables only; nothing secret lives in the repository.
 | `SPOTIFY_REDIRECT_URI` | `http://127.0.0.1:8888/callback` | where Spotify sends the browser after approval; see [Link Spotify](#link-spotify) |
 | `PORT` | `3000` | |
 | `HOST` | `0.0.0.0` | |
-| `DATA_DIR` | `./data` | holds `token.json` (the refresh token), `geo.json` (the geometry) and `covers/` (original JPEGs, the newest 500). Use persistent storage. |
+| `DATA_DIR` | `./data` | holds `token.json` (the refresh token), `geo.json` (the geometry and the S3 brightness) and `covers/` (original JPEGs, the newest 500). Use persistent storage. |
 
 `.env.example` lists them. The server does not read `.env` itself: put the values in the environment.
 
@@ -55,7 +55,7 @@ Either way, the redirect URI must be added under **Redirect URIs** in your app's
 
 The refresh token is saved in `DATA_DIR/token.json` (mode 600); access tokens stay in memory. Neither, nor the API key or the
 client secret, is ever logged. If Spotify revokes the refresh token, the page shows "not linked" again. The page also has
-**Unlink** and the geometry form (saving it bumps the state version, so both boards pick it up).
+**Unlink**, the S3 brightness (16 buttons: match the S3 to the main screen by eye) and the geometry form (saving either bumps the state version, so the boards pick it up within a second or two).
 
 ## API
 
@@ -65,7 +65,7 @@ Every route except `/healthz` needs the API key. Without it the answer is a bare
 |---|---|---|
 | `GET /api/state?v=<n>&wait=<s>` | header `X-Wavelet-Key` | the state JSON; waits up to `wait` seconds (max 25) while `v` is the current version |
 | `GET /api/img/<key>/<variant>` | header `X-Wavelet-Key` | `home` 152x136, `flight` 112x112, `sq160`, `sq36`: raw little-endian RGB565. `404` for an unknown key, `503` + `Retry-After` if it is still being made after 10 s |
-| `GET /`, `GET /callback`, `POST /link`, `/unlink`, `/geo` | HTTP Basic, password = the key | the admin page and Spotify's redirect |
+| `GET /`, `GET /callback`, `POST /link`, `/unlink`, `/geo`, `/bright` | HTTP Basic, password = the key | the admin page and Spotify's redirect |
 | `GET /healthz` | none | `ok` |
 
 Details (the JSON fields, when the version moves, the texel geometry and the dither) are in
