@@ -1,5 +1,6 @@
 /* Plumbing shared by the rest: a clock (tests replace it), an HTTP client over an injectable fetch, files, logging. */
 import fs from "node:fs";
+import path from "node:path";
 
 export interface Clock {
   /** epoch milliseconds */
@@ -65,6 +66,19 @@ export function jsonOf(res: HttpResult): unknown {
   if (!res.body.length) return null;
   try {
     return JSON.parse(res.body.toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
+/** Whether dir sits on its own mount (a volume) rather than the container's own disk, which a redeploy wipes: some
+ *  directory from dir up to (not including) / is on a different device from its parent. null when it can't tell. */
+export function onVolume(dir: string): boolean | null {
+  try {
+    for (let d = path.resolve(dir); d !== path.dirname(d); d = path.dirname(d)) {
+      if (fs.statSync(d).dev !== fs.statSync(path.dirname(d)).dev) return true;
+    }
+    return false;
   } catch {
     return null;
   }

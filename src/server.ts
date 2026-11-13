@@ -3,7 +3,7 @@ import { App } from "./app.js";
 import { ConfigError, loadConfig } from "./config.js";
 import { VERSION } from "./admin.js";
 import { createServer } from "./http.js";
-import { log } from "./util.js";
+import { log, onVolume } from "./util.js";
 
 function main(): void {
   let cfg;
@@ -26,6 +26,7 @@ function main(): void {
     const addr = srv.address();
     const port = addr && typeof addr === "object" ? addr.port : cfg.port;
     log.info(`wavelet server ${VERSION} on http://${cfg.host}:${port} (data ${cfg.dataDir}, Spotify ${app.auth.linked ? "linked" : "not linked"})`);
+    if (onVolume(cfg.dataDir) === false) log.warn(`${cfg.dataDir} is not on a volume: a redeploy forgets the Spotify link (set DATA_DIR to the volume's mount path)`);
     app.poller.start();
   });
   let stopping = false;

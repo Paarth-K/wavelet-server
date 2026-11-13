@@ -2,6 +2,7 @@
 import type { App } from "./app.js";
 import { isLoopbackRedirect } from "./config.js";
 import { GEO_LIMITS, GEOMETRY_KEYS, type Geo } from "./state.js";
+import { onVolume } from "./util.js";
 
 export const VERSION = "1.0.0";
 
@@ -70,6 +71,17 @@ export function renderAdmin(app: App): string {
   const linked = app.auth.linked;
   out.push("<section><table>");
   out.push(`<tr><td>Spotify</td><td>${linked ? "<span class=ok>linked</span>" : "<span class=warn>not linked</span>"}</td></tr>`);
+  const vol = onVolume(app.cfg.dataDir);
+  out.push(
+    `<tr><td>Data</td><td><code>${esc(app.cfg.dataDir)}</code> ` +
+      (vol === true
+        ? "<span class=ok>on a volume</span>"
+        : vol === false
+          ? "<span class=warn>not on a volume: a redeploy forgets the Spotify link, the brightness and the geometry. " +
+            "Set DATA_DIR to the volume's mount path.</span>"
+          : "<span class=warn>can't tell</span>") +
+      "</td></tr>",
+  );
   const tr = st.track;
   if (tr) {
     out.push(
