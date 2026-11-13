@@ -1,0 +1,27 @@
+{
+  "name": "wavelet-server",
+  "version": "1.0.0",
+  "description": "The Spotify-facing server for the Wavelet wall display: polls the player and queue, serves versioned state and ready-to-draw RGB565 cover textures.",
+  "private": true,
+  "type": "module",
+  "main": "dist/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "test": "tsc -p tsconfig.test.json && node --import tsx --test test/*.test.ts"
+  },
+  "packageManager": "pnpm@12.4.1",
+  "dependencies": {
+    "jpeg-js": "^0.4.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
