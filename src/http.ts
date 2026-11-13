@@ -22,7 +22,6 @@ function send(req: http.IncomingMessage, res: Res, status: number, body: string 
     "Content-Type": type,
     "Content-Length": String(buf.length),
     "Cache-Control": "no-store",
-    Connection: "close",
     "X-Content-Type-Options": "nosniff",
     ...extra,
   });
@@ -203,6 +202,6 @@ export function createServer(app: App): http.Server {
   const srv = http.createServer({ maxHeaderSize: 16 * 1024 }, (req, res) => void handler(req, res));
   srv.headersTimeout = 10_000;
   srv.requestTimeout = 30_000; // the whole request must arrive by then (long-polls wait after it has)
-  srv.keepAliveTimeout = 1_000;
+  srv.keepAliveTimeout = 65_000; // the display keeps one TLS connection open between its requests (a new handshake costs it ~1 s)
   return srv;
 }
